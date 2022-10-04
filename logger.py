@@ -1,13 +1,33 @@
-# Infra
 import time
+import json
 import datetime
 import schedule
 from io import TextIOWrapper
+from typing import NamedTuple
 from pathlib import Path
 
 import config
-from log import LogRow
+from log import Log
 from crawler import Crawler
+from player import Player
+
+class LogRow(NamedTuple):
+    """
+    ログの行のフォーマットを定義
+    """
+    logged_time: datetime.datetime
+    log: list[Player]
+    def format(self) -> str:
+        return json.dumps({
+            "logged_time": self.logged_time.isoformat(),
+            "log": self.log
+        })
+    @classmethod
+    def fromformat(cls, format_string: str):
+        fmt = json.loads(format_string)
+        logged_time = datetime.datetime.fromisoformat(fmt["logged_time"])
+        log = list(map(Player._make, fmt["log"]))
+        return cls(logged_time, log)
 
 class Logger:
     def __init__(self):
@@ -34,6 +54,15 @@ class Logger:
                     time.sleep(30)
             finally:
                 schedule.clear()
+    @staticmethod
+    def load_logfile(log_path: str) -> Log:
+        data = {}
+        with open(log_path, "r") as f:
+            for line in f:
+                logrow = LogRow.fromformat(line)
+                data[logrow.logged_time] = logrow.log
+        log = Log(data)
+        return log
 
 if __name__ == "__main__":
     logger = Logger()

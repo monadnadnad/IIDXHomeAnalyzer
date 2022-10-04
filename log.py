@@ -1,44 +1,18 @@
-# Domain
-import json
 import datetime
-from typing import NamedTuple
 
 from player import Player
-
-class LogRow(NamedTuple):
-    """
-    ログの行のフォーマットを定義
-    """
-    logged_time: datetime.datetime
-    log: list[Player]
-    def format(self) -> str:
-        return json.dumps({
-            "logged_time": self.logged_time.isoformat(),
-            "log": self.log
-        })
-    @classmethod
-    def fromformat(cls, format_string: str):
-        fmt = json.loads(format_string)
-        logged_time = datetime.datetime.fromisoformat(fmt["logged_time"])
-        log = list(map(Player._make, fmt["log"]))
-        return cls(logged_time, log)
 
 class Log:
     """
     ログファイルの情報を管理
     """
-    def __init__(self, log_path: str):
-        self.data: dict[datetime.datetime, list[Player]] = {}
+    def __init__(self, data: dict[datetime.datetime, list[Player]]):
+        # 時刻ごとのプレイヤーリスト
+        self.data: dict[datetime.datetime, list[Player]] = data
+        # 全プレイヤ―の集合
         self.player_set: set[Player] = set()
-        # 本来Infraに依存したくない
-        with open(log_path, "r") as f:
-            for line in f:
-                logrow = LogRow.fromformat(line)
-                logged_time = logrow.logged_time
-                log = logrow.log
-                self.data[logged_time] = log
-                for p in log:
-                    self.player_set.add(p)
+        for t in data:
+            self.player_set.update(data[t])
         # 時刻のリスト
         self.times: list[datetime.datetime] = list(self.data.keys())
         # 時刻ごとにログの何番目にいるか
