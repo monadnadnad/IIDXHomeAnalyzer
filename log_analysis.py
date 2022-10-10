@@ -136,6 +136,10 @@ class LogAnalyzer:
                 if player_in_venue[p][i]:
                     ret[i].add(p)
         return ret
+    def get_headcounts(self, log: Log) -> list[int]:
+        playersets = self.get_players_over_time(log)
+        headcounts = [len(ps) for ps in playersets]
+        return headcounts
     def plot_player_in_venue(self, log: Log, p: Player, show=True):
         data = self.get_player_in_venue(log, p)
         #data = list(map(lambda x: -self.MAX_PLAYER_NUM*(not x), data))
@@ -157,8 +161,7 @@ class LogAnalyzer:
             plt.show()
     def plot_headcounts(self, log: Log):
         times = log.get_times()
-        playersets = self.get_players_over_time(log)
-        headcounts = [len(ps) for ps in playersets]
+        headcounts = self.get_headcounts()
         fig, ax = plt.subplots(figsize=(8,4))
         ax.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M"))
         ax.plot(times, headcounts)
