@@ -10,14 +10,14 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from typing import Callable
 from pathlib import Path
-from statistics import median_high
-from scipy import interpolate
+from statistics import fmean, median_high
 
 import config
 from log import Log
 from logger import Logger
 from log_analysis import LogAnalyzer
 from player import Player
+from interpolator import OnedayAccumulator
 
 app = FastAPI()
 
@@ -34,27 +34,7 @@ class LogUsecase:
     # singleton
     def __call__(self):
         return self
-    def _fake_timeline(self):
-        tick = 5
-        fake = datetime.datetime(2022,1,1,0,0,0)
-        timeline = [fake + i*datetime.timedelta(minutes=tick) for i in range(24*60//tick + 1)]
-        return timeline
-    def _to_fake_timeline(self, times: list[datetime.datetime]):
-        fake = datetime.datetime(2022,1,1,0,0,0)
-        new_times = [fake + (t-datetime.datetime.combine(t.date(), datetime.time.min)) for t in times]
-        return new_times
-    def _interpolate_xdate(
-            self,
-            x: list[datetime.datetime],
-            y: list[float],
-            x_new: list[datetime.datetime]
-        ) -> list[float]:
-        _x = mdates.date2num(x)
-        f = interpolate.interp1d(_x, y, kind="nearest", bounds_error=False, fill_value=0)
-        _x_new = mdates.date2num(x_new)
-        y_new = f(_x_new)
-        return y_new
-    def _plot_one_xdate(self, xs: list[datetime.datetime], ys: list[float], buffer: BytesIO):
+    def _plot_xdate(self, xs: list[datetime.datetime], ys: list[float], buffer: BytesIO):
         fig, ax = plt.subplots(figsize=(8,4))
         ax.plot(xs, ys)
         ax.minorticks_on()
@@ -64,77 +44,63 @@ class LogUsecase:
         buffer.seek(0)
         # free
         plt.close(fig)
+    def _plot_oneday(self, xs: list[datetime.timedelta], ys: list[float], buffer: BytesIO):
+        fake = datetime.datetime(2022,1,1)
+        xs = [fake + t for t in xs]
+        self._plot_xdate(xs, ys, buffer)
     def plot_headcounts_of_date(self, _date: datetime.date, buffer: BytesIO):
         log = self.logs[_date]
         a = LogAnalyzer()
         times = log.get_times()
         headcounts = a.get_headcounts(log)
-        self._plot_one_xdate(times, headcounts, buffer)
+        self._plot_xdate(times, headcounts, buffer)
     def plot_headcounts_average(self, buffer: BytesIO):
-        timeline = self._fake_timeline()
         a = LogAnalyzer()
-        N = len(timeline)
-        total = [0]*N
+        acc = OnedayAccumulator()
         for log in self.logs.values():
             times = log.get_times()
             headcounts = a.get_headcounts(log)
-            xs = self._to_fake_timeline(times)
-            new_hc = self._interpolate_xdate(xs, headcounts, timeline)
-            for i in range(N):
-                total[i] += new_hc[i]
-        L = len(self.logs)
-        assert L != 0
-        for i in range(N):
-            total[i] /= L
-        self._plot_one_xdate(timeline, total, buffer)
+            acc.append(times, headcounts)
+        res = acc.result()
+        xs = list(res.keys())
+        avgs = list(map(fmean, res.values()))
+        self._plot_oneday(xs, avgs, buffer)
     def plot_headcounts_median(self, buffer: BytesIO):
-        timeline = self._fake_timeline()
         a = LogAnalyzer()
-        N = len(timeline)
-        all_headcounts = [[] for _ in range(N)]
+        acc = OnedayAccumulator()
         for log in self.logs.values():
             times = log.get_times()
             headcounts = a.get_headcounts(log)
-            xs = self._to_fake_timeline(times)
-            hc_new = self._interpolate_xdate(xs, headcounts, timeline)
-            for i in range(N):
-                all_headcounts[i].append(hc_new[i])
-        medians = [median_high(hc) for hc in all_headcounts]
-        self._plot_one_xdate(timeline, medians, buffer)
+            acc.append(times, headcounts)
+        res = acc.result()
+        xs = list(res.keys())
+        medians = list(map(median_high, res.values()))
+        self._plot_oneday(xs, medians, buffer)
     def plot_headcounts_average_day_of_week(self, weekday: int, buffer: BytesIO):
-        timeline = self._fake_timeline()
         a = LogAnalyzer()
-        N = len(timeline)
-        total = [0]*N
-        L = 0
+        acc = OnedayAccumulator()
         for _date, log in self.logs.items():
             if _date.weekday() != weekday:
                 continue
-            L += 1
             times = log.get_times()
             headcounts = a.get_headcounts(log)
-            xs = self._to_fake_timeline(times)
-            hc_new = self._interpolate_xdate(xs, headcounts, timeline)
-            for i in range(N):
-                total[i] += hc_new[i]
-        assert L != 0
-        for i in range(N):
-            total[i] /= L
-        self._plot_one_xdate(timeline, total, buffer)
+            acc.append(times, headcounts)
+        res = acc.result()
+        xs = list(res.keys())
+        ys = list(map(fmean, res.values()))
+        self._plot_oneday(xs, ys, buffer)
     def plot_playtime(self, id: str, buffer: BytesIO):
         p = Player("fake", id)
-        timeline = self._fake_timeline()
-        N = len(timeline)
-        counts = [0]*N
         a = LogAnalyzer()
+        acc = OnedayAccumulator()
         for log in self.logs.values():
             times = log.get_times()
             piv = a.get_player_in_venue(log, p)
-            xs = self._to_fake_timeline(times)
-            new_piv = self._interpolate_xdate(xs, list(map(float, piv)), timeline)
-            for i in range(N):
-                counts[i] += new_piv[i]
-        self._plot_one_xdate(timeline, counts, buffer)
+            acc.append(times, list(map(float, piv)))
+        res = acc.result()
+        xs = list(res.keys())
+        counts = list(map(sum, res.values()))
+        self._plot_oneday(xs, counts, buffer)
     def get_all_playdate(self, id: str) -> list[datetime.date]:
         p = Player("fake", id)
         ret = []
