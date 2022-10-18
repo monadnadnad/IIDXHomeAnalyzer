@@ -109,9 +109,20 @@ class LogUsecase:
             if any(a.get_status_changed(log, p)):
                 ret.append(_date)
         return ret
+    def get_all_playerlist(self) -> list[Player]:
+        ret = set()
+        for log in self.logs.values():
+            # 名前変更は関知しない
+            ps = log.get_players()
+            ret.update(ps)
+        return list(ret)
 
 get_log_usecase: Callable[[], LogUsecase] = LogUsecase()
 
+
+@app.get("/player/list")
+async def player_list(log_usecase: LogUsecase = Depends(get_log_usecase)):
+    return log_usecase.get_all_playerlist()
 
 @app.get("/player/{id}/date")
 async def player_date(id: str, log_usecase: LogUsecase = Depends(get_log_usecase)):
