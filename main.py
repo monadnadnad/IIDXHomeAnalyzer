@@ -146,7 +146,7 @@ async def headcounts_average(
     return StreamingResponse(buffer, media_type="image/png")
 
 @app.get("/headcounts/average/{weekday}")
-async def headcounts_average(
+async def headcounts_average_of_weekday(
         weekday: int,
         log_usecase: LogUsecase = Depends(get_log_usecase),
         buffer = Depends(get_buffer)
