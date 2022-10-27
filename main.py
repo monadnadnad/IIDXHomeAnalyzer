@@ -14,7 +14,7 @@ from statistics import fmean, median_high
 
 import config
 from log import Log
-from logger import Logger
+from logger import JsonRowLogRepository
 from log_analysis import LogAnalyzer
 from player import Player
 from interpolator import OnedayAccumulator
@@ -28,9 +28,10 @@ def get_buffer() -> BytesIO:
 class LogUsecase:
     def __init__(self):
         self.logs: dict[datetime.date, Log] = {}
+        jsonrows = JsonRowLogRepository()
         for logfile in Path(config.log_directory()).iterdir():
-            _date = datetime.date.fromisoformat(logfile.name[4:-4])
-            self.logs[_date] = Logger.load_logfile(logfile)
+            date = datetime.date.fromisoformat(logfile.stem[4:])
+            self.logs[date] = jsonrows.get_log_by_date(date)
     # singleton
     def __call__(self):
         return self

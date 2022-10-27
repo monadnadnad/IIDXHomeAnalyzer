@@ -1,5 +1,5 @@
 import datetime
-
+from abc import ABC, abstractmethod
 from player import Player
 
 class Log:
@@ -7,7 +7,6 @@ class Log:
     ログファイルの情報を管理
     """
     def __init__(self, data: dict[datetime.datetime, list[Player]]):
-        # サンプルしたログの数（行数）
         # 時刻ごとのプレイヤーリスト
         self.data: dict[datetime.datetime, list[Player]] = data
         # 全プレイヤ―の集合
@@ -16,6 +15,7 @@ class Log:
             self.player_set.update(data[t])
         # 時刻のリスト
         self.times: list[datetime.datetime] = list(self.data.keys())
+        # サンプルしたログの数（行数）
         self.size = len(self.times)
         # 時刻ごとにログの何番目にいるか
         self.player_positions: dict[Player, list[int | None]] = dict()
@@ -35,3 +35,11 @@ class Log:
             return [None] * self.size
         # clone
         return self.player_positions[p][:]
+
+class ILogRepository(ABC):
+    @abstractmethod
+    def save_row(self, logged_at: datetime.datetime, player_list: list[Player]):
+        raise NotImplementedError
+    @abstractmethod
+    def get_log_by_date(self, date: datetime.date) -> Log:
+        raise NotImplementedError
