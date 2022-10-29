@@ -1,3 +1,4 @@
+import traceback
 import time
 import json
 import datetime
@@ -32,32 +33,38 @@ class JsonRowLogRepository(ILogRepository):
                 data[logged_time] = log
         return Log(data)
 
-class Logger:
-    def __init__(self, repository: ILogRepository):
-        self.c = Crawler()
-        self.c.load_cookies()
+class ScheduleLogger:
+    def __init__(self, c: Crawler, repository: ILogRepository):
+        self.c = c
         self.repository = repository
-    def log_once(self, repository: ILogRepository, take=10):
+    def log_once(self, take=10):
         log = self.c.get_log()
-        log = log[:take]
         now = datetime.datetime.now()
-        repository.save_row(now, log)
+        self.repository.save_row(now, log[:take])
     def main_loop(self, start_time: datetime.datetime, end_time: datetime.datetime):
         assert start_time <= end_time
         try:
-            schedule.every(8).minutes.until(end_time).do(
-                self.log_once, repository=self.repository
-            )
-            self.log_once(self.repository)
+            schedule.every(8).minutes.until(end_time).do(self.log_once)
+            if start_time <= datetime.datetime.now():
+                self.log_once()
             while (now := datetime.datetime.now()) <= end_time:
-                if start_time <= now:
-                    schedule.run_pending()
+                try:
+                    if start_time <= now:
+                        schedule.run_pending()
+                    time.sleep(30)
+                except KeyboardInterrupt:
+                    traceback.print_exc()
+                    break
+                except ConnectionError:
+                    traceback.print_exc()
                     time.sleep(30)
         finally:
             schedule.clear()
 
 if __name__ == "__main__":
-    logger = Logger(JsonRowLogRepository())
+    c = Crawler()
+    c.load_cookies()
+    logger = ScheduleLogger(c, JsonRowLogRepository())
     today = datetime.datetime.today().replace(hour=0, minute=0, second=0, microsecond=0)
     start_time = today + datetime.timedelta(hours=9, minutes=30)
     end_time = today + datetime.timedelta(hours=24)
