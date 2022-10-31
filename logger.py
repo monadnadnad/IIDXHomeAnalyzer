@@ -35,10 +35,10 @@ class JsonRowLogRepository(ILogRepository):
 
 class ScheduleLogger:
     def __init__(self, c: Crawler, repository: ILogRepository):
-        self.c = c
+        self.crawler = c
         self.repository = repository
     def log_once(self, take=10):
-        log = self.c.get_log()
+        log = self.crawler.get_log()
         now = datetime.datetime.now()
         self.repository.save_row(now, log[:take])
     def main_loop(self, start_time: datetime.datetime, end_time: datetime.datetime):
@@ -59,6 +59,7 @@ class ScheduleLogger:
                     traceback.print_exc()
                     time.sleep(30)
         finally:
+            self.crawler.save_cookies()
             schedule.clear()
 
 if __name__ == "__main__":
