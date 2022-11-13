@@ -1,6 +1,5 @@
 import json
 import http.cookies
-import http.cookiejar
 import requests
 from bs4 import BeautifulSoup
 
@@ -8,7 +7,7 @@ import config
 from player import Player
 
 class Crawler:
-    def __init__(self, cookie_path="cookie.json"):
+    def __init__(self, cookie_path=config.cookie_path()):
         self.session = requests.session()
         self.cookie_path = cookie_path
     def load_cookies_string(self, cookies: str):
@@ -18,33 +17,32 @@ class Crawler:
         cookie = http.cookies.SimpleCookie()
         cookie.load(cookies)
         for morsel in cookie.values():
-            self.session.cookies.set(morsel.key, morsel.value)
+            self.session.cookies.set(morsel.key, morsel)
     def load_cookies(self):
         with open(self.cookie_path, "r") as f:
             cookies = json.load(f)
         for cookie in cookies:
-            self.session.cookies.set(
-                cookie["name"], cookie["value"],
-                domain=cookie["domain"],
-                path=cookie["path"],
-                expires=cookie["expires"],
-                secure=cookie["secure"]
-            )
+            self.session.cookies.set(**cookie)
     def save_cookies(self):
-        morsels = []
-        for c in self.session.cookies:
-            morsels.append(
-                {
-                    "domain": c.domain,
-                    "expires": c.expires,
-                    "name": c.name,
-                    "path": c.path,
-                    "secure": c.secure,
-                    "value": c.value
-                }
-            )
+        cookies = [
+            dict(
+                version=cookie.version,
+                name=cookie.name,
+                value=cookie.value,
+                port=cookie.port,
+                domain=cookie.domain,
+                path=cookie.path,
+                secure=cookie.secure,
+                expires=cookie.expires,
+                discard=cookie.discard,
+                comment=cookie.comment,
+                comment_url=cookie.comment_url,
+                rfc2109=cookie.rfc2109,
+                rest=cookie._rest
+            ) for cookie in self.session.cookies
+        ]
         with open(self.cookie_path, "w") as f:
-            json.dump(morsels, f, indent=2)
+            json.dump(cookies, f, indent=2)
     def get_log(self) -> list[Player]:
         """
         ライバル検索画面からプレイヤーのリストを取得する
