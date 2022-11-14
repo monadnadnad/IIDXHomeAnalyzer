@@ -39,7 +39,8 @@ def test_can_set_cookies_from_file(tmp_path: Path):
 def test_can_save_cookies(tmp_path: Path):
     d = tmp_path / "sub"
     c = Crawler(cookie_path=str(d))
-    c.session.cookies.set("test", "test2")
+    c.session.cookies.set("test", "test2", discard=False)
+    c.session.cookies.set("discard", "discard", discard=True)
     c.save_cookies()
     should_be_json = d.read_text()
     assert should_be_json != ""

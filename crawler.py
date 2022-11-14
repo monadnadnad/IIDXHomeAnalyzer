@@ -3,11 +3,13 @@ import http.cookies
 import requests
 from bs4 import BeautifulSoup
 
-import config
+from config import Settings
 from player import Player
 
+settings = Settings()
+
 class Crawler:
-    def __init__(self, cookie_path=config.cookie_path()):
+    def __init__(self, cookie_path=settings.cookie_path):
         self.session = requests.session()
         self.cookie_path = cookie_path
     def load_cookies_string(self, cookies: str):
@@ -39,7 +41,8 @@ class Crawler:
                 comment_url=cookie.comment_url,
                 rfc2109=cookie.rfc2109,
                 rest=cookie._rest
-            ) for cookie in self.session.cookies
+            )
+            for cookie in self.session.cookies if not cookie.discard
         ]
         with open(self.cookie_path, "w") as f:
             json.dump(cookies, f, indent=2)
@@ -47,7 +50,7 @@ class Crawler:
         """
         ライバル検索画面からプレイヤーのリストを取得する
         """
-        res = self.session.get(config.rival_search_url())
+        res = self.session.get(settings.rival_search_url)
         soup = BeautifulSoup(res.text, "html.parser")
         table = soup.find(id="result")
         if table == None:

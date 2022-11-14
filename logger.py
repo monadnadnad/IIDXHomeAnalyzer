@@ -3,16 +3,18 @@ import time
 import json
 import datetime
 import schedule
-from pathlib import Path
+from pydantic import DirectoryPath
 
-import config
+from config import Settings
 from log import Log, ILogRepository
 from crawler import Crawler
 from player import Player
 
+settings = Settings()
+
 class JsonRowLogRepository(ILogRepository):
     def __init__(self):
-        self.log_directory = Path(config.log_directory())
+        self.log_directory: DirectoryPath = settings.log_directory
     def save_row(self, logged_at: datetime.datetime, player_list: list[Player]):
         # 本来は最新のタイムスタンプより前の入力が来たらエラーにしたい
         # uowを気にしないようにするため都度openしているが書き込みは数分に一回なので問題ないはず
