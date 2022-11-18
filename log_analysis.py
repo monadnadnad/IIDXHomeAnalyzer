@@ -1,7 +1,6 @@
 # DomainS
 import datetime
-import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
+from itertools import pairwise
 
 from log import Log
 from player import Player
@@ -10,53 +9,35 @@ class LogAnalyzer:
     """
     ログから情報を構築する
     """
-    def __init__(self):
-        # 待ち椅子含めている可能性のある最大の人数
-        self.MAX_PLAYER_NUM = 6
+    def __init__(
+            self,
+            max_stable_time: datetime.timedelta = datetime.timedelta(minutes=30),
+            max_time_between_reentry: datetime.timedelta = datetime.timedelta(hours=1)
+        ):
         # この時間だけは状態が変わらなくても入店していると判断する
-        self.MAX_STABLE_TIME = datetime.timedelta(minutes=30)
+        self.MAX_STABLE_TIME = max_stable_time
         # 再入店までに最低でもかかる時間（再入店と誤認しないための精度上げに使う）
-        self.MAX_TIME_BETWEEN_REENTRY = datetime.timedelta(hours=1)
-    def _compressed_positions(self, log: Log, p: Player):
-        # plotするとき扱いやすいよう[0, -MAX_PLAYER_NUM]に圧縮する
-        positions = log.get_player_positions(p)
-        for i in range(len(positions)):
-            pos = positions[i]
-            if pos == None:
-                positions[i] = -self.MAX_PLAYER_NUM
-            elif pos >= self.MAX_PLAYER_NUM:
-                positions[i] = -self.MAX_PLAYER_NUM
-            else:
-                positions[i] = -pos
-        return positions
+        self.MAX_TIME_BETWEEN_REENTRY = max_time_between_reentry
     def get_status_changed(self, log: Log, p: Player) -> list[bool]:
         """
         プレイした事が確定したタイミングを記録したリストを返す
         """
-        times = log.get_times()
         positions = log.get_player_positions(p)
-        N = len(positions)
-        ret = [False]*N
-        all_log = [log.get_log_at_time(times[i]) for i in range(N)]
-        for i in range(N-1):
+        ret = [False]*len(positions)
+        for i, (log1, log2) in enumerate(pairwise(log.iter_logs())):
             p1 = positions[i]
             p2 = positions[i+1]
-            log1 = all_log[i]
-            log2 = all_log[i+1]
-            # 前のログでpよりも左、右にいたプレイヤー
+            # 前のログでpよりも左にいたプレイヤー
             p1 = p1 if p1 != None else len(log1)
             log1_left = set(log1[:p1])
-            log1_right = set(log1[p1+1:])
             # 後のログでpよりも右にいたプレイヤー
             p2 = p2 if p2 != None else len(log2)
             log2_right = set(log2[p2+1:])
-            ## 新規入店を考慮しない場合の判定
-            if len(log1_left.intersection(log2_right)) != 0:
+            # 新規入店を考慮しない場合の判定
+            if log1_left.intersection(log2_right):
                 ret[i] = True
-                continue
-            else:
-                continue
             ## 以降の新規入店プレイヤーを抜かした場合の判定は失敗しやすいためdeprecate
+            # log1_right = set(log1[p1+1:])
             ## 前のログで左にいたか、誰かが消えてログに現れた過去のプレイヤーか、新規プレイヤー
             #left_old_new_players = log2_right.difference(log1_right)
             ## 前にいたプレイヤーを抜かしたらプレイ判定
@@ -125,44 +106,15 @@ class LogAnalyzer:
         """
         各時間にいた可能性のあるプレイヤーの集合のリスト
         """
-        N = len(log.get_times())
-        ret = [set() for _ in range(N)]
         ps = log.get_players()
         player_in_venue = {}
         for p in ps:
             player_in_venue[p] = self.get_player_in_venue(log, p)
-        for i in range(N):
-            for p in ps:
-                if player_in_venue[p][i]:
-                    ret[i].add(p)
-        return ret
+        return [
+            set(p for p in ps if player_in_venue[p][i])
+            for i in range(log.size)
+        ]
     def get_headcounts(self, log: Log) -> list[int]:
         playersets = self.get_players_over_time(log)
         headcounts = [len(ps) for ps in playersets]
         return headcounts
-    def plot_player_in_venue(self, log: Log, p: Player, show=True):
-        data = self.get_player_in_venue(log, p)
-        #data = list(map(lambda x: -self.MAX_PLAYER_NUM*(not x), data))
-        plt.plot(data, label="in venue")
-        plt.legend()
-        if show:
-            plt.show()
-    def plot_status_changed(self, log: Log, p: Player, show=True):
-        data = self.get_status_changed(log, p)
-        plt.plot(data, label="status changed")
-        plt.legend()
-        if show:
-            plt.show()
-    def plot_positions(self, log: Log, p: Player, show=True):
-        positions = self._compressed_positions(log, p)
-        plt.plot(positions, label="position")
-        plt.legend()
-        if show:
-            plt.show()
-    def plot_headcounts(self, log: Log):
-        times = log.get_times()
-        headcounts = self.get_headcounts()
-        fig, ax = plt.subplots(figsize=(8,4))
-        ax.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M"))
-        ax.plot(times, headcounts)
-        plt.show()
