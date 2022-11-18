@@ -108,6 +108,12 @@ class LogUsecase:
             ps = log.get_players()
             ret.update(ps)
         return list(ret)
+    def get_players_over_time(self, date: datetime.date) -> dict[datetime.datetime, set[Player]]:
+        a = LogAnalyzer()
+        log = self.logs[date]
+        times = log.get_times()
+        players = a.get_players_over_time(log)
+        return dict(zip(times, players))
 
 get_log_usecase: Callable[[], LogUsecase] = LogUsecase()
 
