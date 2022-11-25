@@ -1,12 +1,6 @@
 import pytest
 import datetime
-from player import Player
 from interpolator import OnedayAccumulator
-
-def test_player_equals():
-    assert Player("DJ", "0000-0000") == Player("DJ", "0000-0000")
-    assert Player("DJ2", "1111-1111") == Player("DJ1", "1111-1111")
-    assert Player("DJ1", "1111-1111") in set([Player("DJ2", "1111-1111")])
 
 def test_oneday_accumulator_sum():
     acc = OnedayAccumulator()
@@ -26,4 +20,3 @@ def test_ondday_accumulator_exception():
     data = [0]*len(times)
     with pytest.raises(ValueError):
         acc.append(times, data)
-    

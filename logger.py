@@ -10,7 +10,12 @@ from log import Log, ILogRepository
 from crawler import Crawler
 from player import Player
 
-settings = Settings()
+class ScheduleLoggerSettings(Settings):
+    log_directory: DirectoryPath
+    start_time: datetime.time
+    end_time: datetime.time
+
+settings = ScheduleLoggerSettings()
 
 class JsonRowLogRepository(ILogRepository):
     def __init__(self):
@@ -54,9 +59,6 @@ class ScheduleLogger:
                     if start_time <= now:
                         schedule.run_pending()
                     time.sleep(30)
-                except KeyboardInterrupt:
-                    traceback.print_exc()
-                    break
                 except ConnectionError:
                     traceback.print_exc()
                     time.sleep(30)
@@ -68,7 +70,7 @@ if __name__ == "__main__":
     c = Crawler()
     c.load_cookies()
     logger = ScheduleLogger(c, JsonRowLogRepository())
-    today = datetime.datetime.today().replace(hour=0, minute=0, second=0, microsecond=0)
-    start_time = today + datetime.timedelta(hours=9, minutes=30)
-    end_time = today + datetime.timedelta(hours=24)
+    today = datetime.datetime.today().date()
+    start_time = datetime.datetime.combine(today, settings.start_time)
+    end_time = datetime.datetime.combine(today, settings.end_time)
     logger.main_loop(start_time, end_time)

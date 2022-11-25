@@ -1,5 +1,7 @@
 {
     "rival_search_url": "https://p.eagate.573.jp/game/2dx/30/rival/rival_search.html?mode=5",
+    "cookie_path": "./cookie.json",
     "log_directory": "./log/",
-    "cookie_path": "./cookie.json"
+    "start_time": "09:30",
+    "end_time": "23:30"
 }

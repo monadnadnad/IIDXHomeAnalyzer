@@ -13,12 +13,12 @@ from statistics import fmean, median_high
 
 from config import Settings
 from log import Log
-from logger import JsonRowLogRepository
+from logger import JsonRowLogRepository, ScheduleLoggerSettings
 from log_analysis import LogAnalyzer
 from player import Player
 from interpolator import OnedayAccumulator
 
-settings = Settings()
+settings = ScheduleLoggerSettings()
 
 app = FastAPI()
 
