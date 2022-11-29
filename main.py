@@ -9,14 +9,13 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from typing import Callable
-from statistics import fmean, median_high
 
 from config import Settings
 from log import Log
 from logger import JsonRowLogRepository, ScheduleLoggerSettings
 from log_analysis import LogAnalyzer
 from player import Player
-from interpolator import OnedayAccumulator
+from interpolator import OnedayAverage, OnedayMax, OnedayMedian, OnedaySum
 
 settings = ScheduleLoggerSettings()
 
@@ -60,39 +59,47 @@ class LogUsecase:
         return dict(zip(times, headcounts))
     def get_headcounts_average(self) -> dict[datetime.timedelta, float]:
         a = LogAnalyzer()
-        acc = OnedayAccumulator()
+        acc = OnedayAverage()
         for log in self.logs.values():
             times = log.get_times()
             headcounts = a.get_headcounts(log)
             acc.append(times, headcounts)
-        return dict((k, fmean(v)) for k, v in acc.result().items())
-    def get_headcounts_median(self):
+        return acc.result()
+    def get_headcounts_median(self) -> dict[datetime.timedelta, float]:
         a = LogAnalyzer()
-        acc = OnedayAccumulator()
+        acc = OnedayMedian()
         for log in self.logs.values():
             times = log.get_times()
             headcounts = a.get_headcounts(log)
             acc.append(times, headcounts)
-        return dict((k, median_high(v)) for k, v in acc.result().items())
+        return acc.result()
+    def get_headcounts_max(self) -> dict[datetime.timedelta, float]:
+        a = LogAnalyzer()
+        acc = OnedayMax()
+        for log in self.logs.values():
+            times = log.get_times()
+            headcounts = a.get_headcounts(log)
+            acc.append(times, headcounts)
+        return acc.result()
     def get_headcounts_average_weekday(self, weekday: int) -> dict[datetime.timedelta, float]:
         a = LogAnalyzer()
-        acc = OnedayAccumulator()
+        acc = OnedayAverage()
         for _date, log in self.logs.items():
             if _date.weekday() != weekday:
                 continue
             times = log.get_times()
             headcounts = a.get_headcounts(log)
             acc.append(times, headcounts)
-        return dict((k, fmean(v)) for k, v in acc.result().items())
+        return acc.result()
     def get_playtime(self, id: str) -> dict[datetime.timedelta, float]:
         p = Player("fake", id)
         a = LogAnalyzer()
-        acc = OnedayAccumulator()
+        acc = OnedaySum()
         for log in self.logs.values():
             times = log.get_times()
             piv = a.get_player_in_venue(log, p)
             acc.append(times, list(map(float, piv)))
-        return dict((k, sum(v)) for k, v in acc.result().items())
+        return acc.result()
     def get_all_playdate(self, id: str) -> list[datetime.date]:
         p = Player("fake", id)
         ret = []
@@ -161,6 +168,15 @@ async def headcounts_median(
         buffer = Depends(get_buffer)
     ):
     data = log_usecase.get_headcounts_median()
+    plot_oneday(data.keys(), data.values(), buffer)
+    return StreamingResponse(buffer, media_type="image/png")
+
+@app.get("/headcounts/max")
+async def headcounts_max(
+        log_usecase: LogUsecase = Depends(get_log_usecase),
+        buffer = Depends(get_buffer)
+    ):
+    data = log_usecase.get_headcounts_max()
     plot_oneday(data.keys(), data.values(), buffer)
     return StreamingResponse(buffer, media_type="image/png")
 
