@@ -25,7 +25,7 @@ class Crawler:
             cookies = json.load(f)
         for cookie in cookies:
             self.session.cookies.set(**cookie)
-    def save_cookies(self):
+    def save_cookies(self, ignore_discard=False):
         cookies = [
             dict(
                 version=cookie.version,
@@ -42,7 +42,7 @@ class Crawler:
                 rfc2109=cookie.rfc2109,
                 rest=cookie._rest
             )
-            for cookie in self.session.cookies if not cookie.discard
+            for cookie in self.session.cookies if not cookie.discard or ignore_discard
         ]
         with open(self.cookie_path, "w") as f:
             json.dump(cookies, f, indent=2)

@@ -32,6 +32,6 @@ if __name__ == "__main__":
             if "httpOnly" in cookie:
                 attributes["rest"] = {"HttpOnly": cookie["httpOnly"]}
             c.session.cookies.set(cookie["name"], cookie["value"], **attributes)
-        c.save_cookies()
+        c.save_cookies(ignore_discard=True)
     finally:
         driver.quit()
