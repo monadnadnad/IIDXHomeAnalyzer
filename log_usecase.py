@@ -61,16 +61,22 @@ class LogUsecase:
         acc = OnedaySum()
         for log in self.logs.values():
             times = log.get_times()
-            piv = a.get_player_in_venue(log, p)
-            acc.append(times, list(map(float, piv)))
+            try:
+                piv = a.get_player_in_venue(log, p)
+                acc.append(times, list(map(float, piv)))
+            except KeyError:
+                pass
         return acc.result()
     def get_all_playdate(self, id: str) -> list[datetime.date]:
         p = Player("fake", id)
         ret = []
         a = LogAnalyzer()
         for _date, log in self.logs.items():
-            if any(a.get_status_changed(log, p)):
-                ret.append(_date)
+            try:
+                if any(a.get_status_changed(log, p)):
+                    ret.append(_date)
+            except KeyError:
+                pass
         return ret
     def get_all_playerlist(self) -> list[Player]:
         ret = set()

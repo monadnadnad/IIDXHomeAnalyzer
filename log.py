@@ -39,9 +39,10 @@ class Log:
     def get_players(self) -> frozenset[Player]:
         return self._player_set
     def get_player_positions(self, p: Player) -> list[int | None]:
-        if p not in self._player_set:
-            return [None] * self.size
-        return self._player_positions[p][:]
+        try:
+            return self._player_positions[p][:]
+        except KeyError as e:
+            raise KeyError(f"player: {p} not found") from e
 
 class ILogRepository(ABC):
     @abstractmethod
