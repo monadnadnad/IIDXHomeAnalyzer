@@ -3,11 +3,12 @@ import time
 import json
 import datetime
 import schedule
+from requests import ConnectionError as RequestsConnectionError
 from pydantic import DirectoryPath
 
 from config import Settings
 from log import Log, ILogRepository
-from crawler import Crawler
+from crawler import Crawler, ResultTableNotFoundError
 from player import Player
 
 class ScheduleLoggerSettings(Settings):
@@ -59,7 +60,7 @@ class ScheduleLogger:
                     if start_time <= now:
                         schedule.run_pending()
                     time.sleep(30)
-                except ConnectionError:
+                except (ResultTableNotFoundError, RequestsConnectionError):
                     traceback.print_exc()
                     time.sleep(30)
         finally:

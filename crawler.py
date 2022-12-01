@@ -8,6 +8,14 @@ from player import Player
 
 settings = Settings()
 
+class ResultTableNotFoundError(Exception):
+    """
+    ネットワーク以外の原因でプレイヤー表が見つからない際の例外
+    """
+    def __init__(self, status_code: int, html: str):
+        self.status_code = status_code
+        self.html = html
+
 class Crawler:
     def __init__(self, cookie_path=settings.cookie_path):
         self.session = requests.session()
@@ -56,7 +64,7 @@ class Crawler:
         if table == None:
             # 何らかの原因で表が見つからない
             # メンテナンス中、cookieが未設定、cookieが無効になった
-            raise Exception("search result table not found")
+            raise ResultTableNotFoundError(res.status_code, res.text)
         trs = table.find_all("tr")[1:] # ヘッダーをスキップ
         ret = []
         for tr in trs:
