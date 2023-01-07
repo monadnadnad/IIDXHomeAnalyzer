@@ -64,12 +64,12 @@ class ScheduleLogger:
                     traceback.print_exc()
                     time.sleep(30)
         finally:
-            self.crawler.save_cookies()
             schedule.clear()
 
 if __name__ == "__main__":
     c = Crawler()
-    c.load_cookies()
+    cookies = input("Set-Cookie: ")
+    c.load_cookies_string(cookies)
     logger = ScheduleLogger(c, JsonRowLogRepository())
     today = datetime.datetime.today().date()
     start_time = datetime.datetime.combine(today, settings.start_time)

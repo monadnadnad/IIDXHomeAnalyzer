@@ -8,7 +8,6 @@ def json_source(settings: BaseSettings) -> dict[str, Any]:
 
 class Settings(BaseSettings):
     rival_search_url: HttpUrl
-    cookie_path: FilePath
     
     class Config:
         extra = "ignore"
