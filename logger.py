@@ -8,7 +8,7 @@ from pydantic import DirectoryPath
 
 from config import Settings
 from log import Log, ILogRepository
-from crawler import Crawler, ResultTableNotFoundError
+from fetcher import Fetcher, ResultTableNotFoundError
 from player import Player
 
 class ScheduleLoggerSettings(Settings):
@@ -42,11 +42,11 @@ class JsonRowLogRepository(ILogRepository):
         return Log(data)
 
 class ScheduleLogger:
-    def __init__(self, c: Crawler, repository: ILogRepository):
-        self.crawler = c
+    def __init__(self, fetcher: Fetcher, repository: ILogRepository):
+        self.fetcher = fetcher
         self.repository = repository
     def log_once(self, take=10):
-        log = self.crawler.get_log()
+        log = self.fetcher.get_log()
         now = datetime.datetime.now()
         self.repository.save_row(now, log[:take])
     def main_loop(self, start_time: datetime.datetime, end_time: datetime.datetime):
@@ -67,10 +67,10 @@ class ScheduleLogger:
             schedule.clear()
 
 if __name__ == "__main__":
-    c = Crawler()
+    fetcher = Fetcher()
     cookies = input("Set-Cookie: ")
-    c.load_cookies_string(cookies)
-    logger = ScheduleLogger(c, JsonRowLogRepository())
+    fetcher.load_cookies_string(cookies)
+    logger = ScheduleLogger(fetcher, JsonRowLogRepository())
     today = datetime.datetime.today().date()
     start_time = datetime.datetime.combine(today, settings.start_time)
     end_time = datetime.datetime.combine(today, settings.end_time)

@@ -15,7 +15,7 @@ class ResultTableNotFoundError(Exception):
         self.status_code = status_code
         self.html = html
 
-class Crawler:
+class Fetcher:
     def __init__(self):
         self.session = requests.session()
     def load_cookies_string(self, cookies: str):
